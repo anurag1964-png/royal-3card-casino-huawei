@@ -1,20 +1,61 @@
-name: Build APK Package
+name: Build Android APK
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
+      
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - name: Package Web App
+          
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+        
+      - name: Build APK Package
         run: |
-          mkdir -p dist
-          cp index.html dist/
-      - name: Upload Artifact
+          cat << 'EOF' > twa-manifest.json
+          {
+            "packageId": "com.playzone.royalcasino.hw",
+            "host": "anurag1964-png.github.io",
+            "name": "Royal 3-Card Casino",
+            "shortName": "RoyalCasino",
+            "startUrl": "/royal-3card-casino-huawei/",
+            "display": "standalone",
+            "themeColor": "#000000",
+            "backgroundColor": "#000000",
+            "enableNotifications": false,
+            "shortcuts": [],
+            "iconUrl": "https://anurag1964-png.github.io/royal-3card-casino-huawei/",
+            "maskableIconUrl": "https://anurag1964-png.github.io/royal-3card-casino-huawei/",
+            "splashScreenFadeOutDuration": 300,
+            "signingKey": {
+              "path": "android.keystore",
+              "alias": "android"
+            },
+            "minSdkVersion": 21,
+            "generatorApp": "bubblewrap-cli",
+            "useBrowserFallback": false,
+            "alphaCodename": ""
+          }
+          EOF
+          
+          keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
+          bubblewrap build --manifest=twa-manifest.json
+          
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: royal-casino-apk-files
-          path: dist/
+          name: royal-casino-apk
+          path: app-release-signed.apk

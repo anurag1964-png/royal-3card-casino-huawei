@@ -29,10 +29,15 @@ jobs:
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
         
-      - name: Build TWA Package Directly
+      - name: Initialize and Build APK Properly
         run: |
-          # Create a proper manifest with absolute safe parameters
-          cat << 'EOF' > t-manifest.json
+          set -e
+          
+          # 1. Download valid test icon
+          curl -L -o icon.png https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png
+          
+          # 2. Create official TWA Manifest
+          cat << 'EOF' > twa-manifest.json
           {
             "packageId": "com.playzone.royalcasino.hw",
             "host": "anurag1964-png.github.io",
@@ -44,8 +49,8 @@ jobs:
             "backgroundColor": "#000000",
             "enableNotifications": false,
             "shortcuts": [],
-            "iconUrl": "https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png",
-            "maskableIconUrl": "https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png",
+            "iconUrl": "icon.png",
+            "maskableIconUrl": "icon.png",
             "splashScreenFadeOutDuration": 300,
             "signingKey": {
               "path": "android.keystore",
@@ -57,21 +62,21 @@ jobs:
             "alphaCodename": ""
           }
           EOF
-
-          # Generate keystore
+          
+          # 3. Generate Keystore
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
-
-          # Run bubblewrap update/build non-interactively
-          bubblewrap update --manifest=t-manifest.json --skip-icon-validation || true
-          bubblewrap build --manifest=t-manifest.json --skip-signing || true
+          
+          # 4. Initialize Bubblewrap project non-interactively
+          yes | bubblewrap init --manifest=twa-manifest.json
+          
+          # 5. Build the signed APK
+          bubblewrap build
         shell: bash
 
-      - name: Search and Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: royal-casino-apk
           path: |
-            *.apk
-            app/build/outputs/apk/release/*.apk
             app-release-signed.apk
-            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk

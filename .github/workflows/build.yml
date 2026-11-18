@@ -23,8 +23,18 @@ jobs:
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
         
-      - name: Build APK Package
+      - name: Create App Icon and Manifest
         run: |
+          node -e '
+            const fs = require("fs");
+            const https = require("https");
+            const file = fs.createWriteStream("icon.png");
+            https.get("https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png", function(response) {
+              response.pipe(file);
+            });
+          '
+          sleep 3
+          
           cat << 'EOF' > twa-manifest.json
           {
             "packageId": "com.playzone.royalcasino.hw",
@@ -37,8 +47,8 @@ jobs:
             "backgroundColor": "#000000",
             "enableNotifications": false,
             "shortcuts": [],
-            "iconUrl": "https://anurag1964-png.github.io/royal-3card-casino-huawei/",
-            "maskableIconUrl": "https://anurag1964-png.github.io/royal-3card-casino-huawei/",
+            "iconUrl": "icon.png",
+            "maskableIconUrl": "icon.png",
             "splashScreenFadeOutDuration": 300,
             "signingKey": {
               "path": "android.keystore",
@@ -51,6 +61,8 @@ jobs:
           }
           EOF
           
+      - name: Generate Keystore and Build APK
+        run: |
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
           bubblewrap build --manifest=twa-manifest.json
           

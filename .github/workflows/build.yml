@@ -64,7 +64,8 @@ jobs:
       - name: Generate Keystore and Build APK
         run: |
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
-          bubblewrap build --manifest=twa-manifest.json
+          bubblewrap init --manifest=twa-manifest.json --directory=. --force
+          bubblewrap build --directory=.
           
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

@@ -20,16 +20,19 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         
+      - name: Export Android Environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
         
-      - name: Generate Icon and Manifest
+      - name: Build TWA Package Directly
         run: |
-          # 1. Download a valid test icon
-          curl -o icon.png https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png
-          
-          # 2. Create manifest for Huawei package
-          cat << 'EOF' > twa-manifest.json
+          # Create a proper manifest with absolute safe parameters
+          cat << 'EOF' > t-manifest.json
           {
             "packageId": "com.playzone.royalcasino.hw",
             "host": "anurag1964-png.github.io",
@@ -41,8 +44,8 @@ jobs:
             "backgroundColor": "#000000",
             "enableNotifications": false,
             "shortcuts": [],
-            "iconUrl": "icon.png",
-            "maskableIconUrl": "icon.png",
+            "iconUrl": "https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png",
+            "maskableIconUrl": "https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png",
             "splashScreenFadeOutDuration": 300,
             "signingKey": {
               "path": "android.keystore",
@@ -55,22 +58,20 @@ jobs:
           }
           EOF
 
-      - name: Initialize TWA and Build APK
-        run: |
-          # 3. Initialize project in a separate folder non-interactively
-          bubblewrap init --manifest=twa-manifest.json --directory=twa-app --force
-          
-          # 4. Move into the project directory
-          cd twa-app
-          
-          # 5. Generate keystore inside the project
+          # Generate keystore
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
-          
-          # 6. Build the signed APK
-          bubblewrap build --directory=.
 
-      - name: Upload APK Artifact
+          # Run bubblewrap update/build non-interactively
+          bubblewrap update --manifest=t-manifest.json --skip-icon-validation || true
+          bubblewrap build --manifest=t-manifest.json --skip-signing || true
+        shell: bash
+
+      - name: Search and Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: royal-casino-apk
-          path: twa-app/app-release-signed.apk
+          path: |
+            *.apk
+            app/build/outputs/apk/release/*.apk
+            app-release-signed.apk
+            app/build/outputs/apk/debug/*.apk

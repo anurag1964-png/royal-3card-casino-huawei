@@ -1,7 +1,20 @@
-name: Build APK
+name: Build APK Package
 on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Package Web App
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: royal-casino-apk-files
+          path: dist/

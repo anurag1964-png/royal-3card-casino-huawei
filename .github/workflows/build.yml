@@ -20,17 +20,23 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         
+      - name: Export Android Home
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
         
-      - name: Create App Icon and Manifest
+      - name: Create Manifest and Build APK
         run: |
           node -e '
             const fs = require("fs");
             const https = require("https");
             const file = fs.createWriteStream("icon.png");
-            https.get("https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png", function(response) {
-              response.pipe(file);
+            https.get("https://raw.githubusercontent.com/w3c/manifest/master/tests/icon.png", function(res) {
+              res.pipe(file);
             });
           '
           sleep 3
@@ -61,8 +67,6 @@ jobs:
           }
           EOF
           
-      - name: Generate Keystore and Build APK
-        run: |
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
           bubblewrap init --manifest=twa-manifest.json --directory=. --force
           bubblewrap build --directory=.

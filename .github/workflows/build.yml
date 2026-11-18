@@ -20,7 +20,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         
-      - name: Export Android Home
+      - name: Export Android Environment
         run: |
           echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
@@ -29,8 +29,9 @@ jobs:
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
         
-      - name: Create Manifest and Build APK
+      - name: Generate Keystore and Build APK
         run: |
+          # 1. Download sample icon
           node -e '
             const fs = require("fs");
             const https = require("https");
@@ -40,7 +41,8 @@ jobs:
             });
           '
           sleep 3
-          
+
+          # 2. Create TWA Manifest for Huawei package
           cat << 'EOF' > twa-manifest.json
           {
             "packageId": "com.playzone.royalcasino.hw",
@@ -66,13 +68,19 @@ jobs:
             "alphaCodename": ""
           }
           EOF
-          
+
+          # 3. Generate Keystore
           keytool -genkey -v -keystore android.keystore -alias android -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android, O=Playzone, C=IN"
-          bubblewrap init --manifest=twa-manifest.json --directory=. --force
-          bubblewrap build --directory=.
-          
+
+          # 4. Build APK with auto-passed passwords
+          printf "android\nandroid\n" | bubblewrap build --manifest=twa-manifest.json
+        shell: bash
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: royal-casino-apk
-          path: app-release-signed.apk
+          path: |
+            *.apk
+            app-release-signed.apk
+            app/build/outputs/apk/release/*.apk
